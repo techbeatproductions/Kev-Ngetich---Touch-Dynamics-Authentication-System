@@ -25,31 +25,19 @@ os.makedirs(plots_base_directory, exist_ok=True)
 os.makedirs(models_base_directory, exist_ok=True)
 
 def extract_features(df):
-    """
-    Extract features from the input DataFrame.
-
-    Parameters:
-    df (pd.DataFrame): Input DataFrame
-
-    Returns:
-    pd.DataFrame: Feature DataFrame
-    """
     df.iloc[:, 2] = pd.to_numeric(df.iloc[:, 2], errors='coerce')  # TAP timestamp
     df.iloc[:, 4] = pd.to_numeric(df.iloc[:, 4], errors='coerce')  # TAR timestamp
     df.iloc[:, 5] = pd.to_numeric(df.iloc[:, 5], errors='coerce')  # TAP pressure size
     df = df.dropna()
 
-    # Extract columns for feature computation
     tap_timestamps = df.iloc[:, 2].values
     tar_timestamps = df.iloc[:, 4].values
     pressure_sizes = df.iloc[:, 5].values
     
-    # Calculate DT, FT, and IT
     dt = np.diff(tap_timestamps, prepend=tap_timestamps[0])
     ft = tar_timestamps - tap_timestamps
     it = np.diff(tar_timestamps, prepend=tar_timestamps[0])
     
-    # Create features DataFrame
     features_df = pd.DataFrame({
         'PS': pressure_sizes,
         'DT': dt,
@@ -67,18 +55,6 @@ def generate_illegitimate_samples(X, num_samples, noise_scale):
     return illegitimate_samples[indices]
 
 def load_and_preprocess_data(csv_file_path, k=10, num_illegitimate_samples=40, noise_scale=0.05):
-    """
-    Load and preprocess data from a CSV file.
-
-    Parameters:
-    csv_file_path (str): Path to the CSV file
-    k (int): Number of features to select
-    num_illegitimate_samples (int): Number of illegitimate samples to generate
-    noise_scale (float): Noise scale for generating illegitimate samples
-
-    Returns:
-    X_train, X_test, y_train, y_test (np.ndarray): Preprocessed data
-    """
     try:
         data = pd.read_csv(csv_file_path, header=None)
         data = data[data.iloc[:, 1] != 'E']
@@ -122,86 +98,27 @@ def load_and_preprocess_data(csv_file_path, k=10, num_illegitimate_samples=40, n
         return None, None, None, None
 
 def train_svdd(X_train, y_train, nu, gamma_values, kernel_values):
-    """
-    Train an SVDD model with hyperparameter tuning.
-
-    Parameters:
-    X_train (np.ndarray): Training data
-    y_train (np.ndarray): Training labels
-    nu (float): Nu value for SVDD
-    gamma_values (list): List of gamma values to try
-    kernel_values (list): List of kernel values to try
-
-    Returns:
-    OneClassSVM: Trained SVDD model
-    """
     if X_train is None or y_train is None:
         return None
 
     param_grid = {
-        'kernel': kernel_values,
-        'gamma': gamma_values,
+        'kernel': kernel_values if isinstance(kernel_values, list) else [kernel_values],
+        'gamma': gamma_values if isinstance(gamma_values, list) else [gamma_values],
         'nu': [nu]
     }
-    
+
     svdd = OneClassSVM()
     grid_search = GridSearchCV(svdd, param_grid, cv=3, scoring='f1')
     grid_search.fit(X_train, y_train)
-    return grid_search.best_estimator_
-
-    """
-    Train an SVDD model with hyperparameter tuning.
-
-    Parameters:
-    X_train (np.ndarray): Training data
-    y_train (np.ndarray): Training labels
-    nu (float): Nu value for SVDD
-    gamma_values (list): List of gamma values to try
-    kernel_values (list): List of kernel values to try
-
-    Returns:
-    OneClassSVM: Trained SVDD model
-    """
-    if X_train is None or y_train is None:
-        return None
-
-    param_grid = {
-        'kernel': kernel_values,
-        'gamma': gamma_values,
-        'nu': [nu]
-    }
     
-    svdd = OneClassSVM()
-    grid_search = GridSearchCV(svdd, param_grid, cv=3, scoring='f1')
-    grid_search.fit(X_train, y_train)
     return grid_search.best_estimator_
 
 def train_ocknn(X_train):
-    """
-    Train an OCKNN model.
-
-    Parameters:
-    X_train (np.ndarray): Training data
-
-    Returns:
-    LocalOutlierFactor: Trained OCKNN model
-    """
     ocknn = LocalOutlierFactor(novelty=True)
     ocknn.fit(X_train)
     return ocknn
 
 def evaluate_model(model, X_test, y_test):
-    """
-    Evaluate a model on the test data.
-
-    Parameters:
-    model (OneClassSVM or LocalOutlierFactor): Trained model
-    X_test (np.ndarray): Test data
-    y_test (np.ndarray): Test labels
-
-    Returns:
-    precision, recall, f1, far, frr, cm, eer (float): Evaluation metrics
-    """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
 
@@ -237,13 +154,6 @@ def evaluate_model(model, X_test, y_test):
         return precision, recall, f1, far, frr, cm, eer
 
 def plot_distributions(metrics, model_name):
-    """
-    Plot the distributions of FAR, FRR, and EER.
-
-    Parameters:
-    metrics (dict): Evaluation metrics
-    model_name (str): Model name
-    """
     plt.figure(figsize=(15, 5))
 
     plt.subplot(1, 3, 1)
@@ -268,190 +178,110 @@ def plot_distributions(metrics, model_name):
     plt.savefig(os.path.join(plots_base_directory, f'{model_name}_distributions.png'))
     plt.close()
 
-def plot_confusion_matrix(cm, model_name):
-    """
-    Plot the confusion matrix.
-
-    Parameters:
-    cm (np.ndarray): Confusion matrix
-    model_name (str): Model name
-    """
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, 
-                xticklabels=['Legitimate', 'Illegitimate'], 
-                yticklabels=['Legitimate', 'Illegitimate'])
-    plt.title(f'{model_name} Confusion Matrix')
-    plt.xlabel('Predicted')
-    plt.ylabel('Actual')
-    plt.savefig(os.path.join(plots_base_directory, f'{model_name}_confusion_matrix.png'))
-    plt.close()
-
-def save_model(model, filename):
-    """
-    Save the trained model to a file.
-
-    Parameters:
-    model (object): Trained model
-    filename (str): Filename for saving the model
-
-    Returns:
-    str: Path to the saved model
-    """
-    model_path = os.path.join(models_base_directory, filename)
+def save_model(model, model_name):
+    model_path = os.path.join(models_base_directory, f'{model_name}.pkl')
     joblib.dump(model, model_path)
-    return model_path
-
-def train_user_model(user_id, user_data_path, best_svdd_params):
-    """
-    Train SVDD and OCKNN models for a specific user.
-
-    Parameters:
-    user_id (str): User ID
-    user_data_path (str): Path to the user data CSV
-    best_svdd_params (dict): Best parameters for SVDD model
-    """
-    X_train, X_test, y_train, y_test = load_and_preprocess_data(user_data_path)
-
-    if X_train is not None and y_train is not None:
-        # Train SVDD model with best parameters
-        svdd_model = train_svdd(X_train, y_train, **best_svdd_params)
-        precision, recall, f1, far, frr, cm, eer = evaluate_model(svdd_model, X_test, y_test)
-        
-        print(f"SVDD Model Performance for User {user_id}:")
-        print(f"Precision: {precision}")
-        print(f"Recall: {recall}")
-        print(f"F1 Score: {f1}")
-        print(f"FAR: {far}")
-        print(f"FRR: {frr}")
-        print("Confusion Matrix:")
-        print(cm)
-        
-        plot_confusion_matrix(cm, f'SVDD_User_{user_id}')
-        plot_distributions({'far': [far], 'frr': [frr], 'eer': [eer]}, f'SVDD_User_{user_id}')
-        svdd_model_path = save_model(svdd_model, f'svdd_model_{user_id}.pkl')
-
-        # Train OCKNN model
-        ocknn_model = train_ocknn(X_train)
-        ocknn_precision, ocknn_recall, ocknn_f1, ocknn_far, ocknn_frr, ocknn_cm, ocknn_eer = evaluate_model(ocknn_model, X_test, y_test)
-
-        print(f"OCKNN Model Performance for User {user_id}:")
-        print(f"Precision: {ocknn_precision}")
-        print(f"Recall: {ocknn_recall}")
-        print(f"F1 Score: {ocknn_f1}")
-        print(f"FAR: {ocknn_far}")
-        print(f"FRR: {ocknn_frr}")
-        print("Confusion Matrix:")
-        print(ocknn_cm)
-        
-        plot_confusion_matrix(ocknn_cm, f'OCKNN_User_{user_id}')
-        plot_distributions({'far': [ocknn_far], 'frr': [ocknn_frr], 'eer': [ocknn_eer]}, f'OCKNN_User_{user_id}')
-        ocknn_model_path = save_model(ocknn_model, f'ocknn_model_{user_id}.pkl')
-
-        return svdd_model_path, ocknn_model_path
-    else:
-        return None, None
-
-    """
-    Train SVDD and OCKNN models for a specific user.
-
-    Parameters:
-    user_id (str): User ID
-    user_data (str): Path to the user data CSV
-    best_svdd_params (dict): Best parameters for SVDD model
-    """
-    X_train, X_test, y_train, y_test = load_and_preprocess_data(user_data)
-
-    if X_train is not None and y_train is not None:
-        # Train SVDD model with best parameters
-        svdd_model = train_svdd(X_train, y_train, **best_svdd_params)
-        precision, recall, f1, far, frr, cm, eer = evaluate_model(svdd_model, X_test, y_test)
-        
-        print(f"SVDD Model Performance for User {user_id}:")
-        print(f"Precision: {precision}")
-        print(f"Recall: {recall}")
-        print(f"F1 Score: {f1}")
-        print(f"FAR: {far}")
-        print(f"FRR: {frr}")
-        print("Confusion Matrix:")
-        print(cm)
-        
-        plot_confusion_matrix(cm, f'SVDD_User_{user_id}')
-        plot_distributions({'far': [far], 'frr': [frr], 'eer': [eer]}, f'SVDD_User_{user_id}')
-        save_model(svdd_model, f'svdd_model_{user_id}.pkl')
-
-        # Train OCKNN model
-        ocknn_model = train_ocknn(X_train)
-        ocknn_precision, ocknn_recall, ocknn_f1, ocknn_far, ocknn_frr, ocknn_cm, ocknn_eer = evaluate_model(ocknn_model, X_test, y_test)
-
-        print(f"OCKNN Model Performance for User {user_id}:")
-        print(f"Precision: {ocknn_precision}")
-        print(f"Recall: {ocknn_recall}")
-        print(f"F1 Score: {ocknn_f1}")
-        print(f"FAR: {ocknn_far}")
-        print(f"FRR: {ocknn_frr}")
-        print("Confusion Matrix:")
-        print(ocknn_cm)
-        
-        plot_confusion_matrix(ocknn_cm, f'OCKNN_User_{user_id}')
-        plot_distributions({'far': [ocknn_far], 'frr': [ocknn_frr], 'eer': [ocknn_eer]}, f'OCKNN_User_{user_id}')
-        save_model(ocknn_model, f'ocknn_model_{user_id}.pkl')
+    print(f"Model saved to {model_path}")
 
 def main():
-    csv_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
-    
-    # Define hyperparameter ranges
+    # Define parameter values
     nu_values = [0.1, 0.5, 0.9]
-    gamma_values = [0.001, 0.01, 0.1, 1, 10]
-    kernel_values = ['linear', 'rbf']
+    gamma_values = [0.1, 1, 10]
+    kernel_values = ['linear', 'rbf', 'sigmoid']
+    k_values = [5, 10, 20]
+    num_illegitimate_samples_values = [20, 40, 60]
+    noise_scales = [0.01, 0.05, 0.1]
     
-    best_svdd_params = None
-    best_svdd_metrics = {
-        'precision': 0,
-        'recall': 0,
-        'f1': 0,
-        'far': 0,
-        'frr': 0,
-        'eer': float('inf')
-    }
-    
-    for csv_file in tqdm(csv_files, desc="Processing Files"):
-        csv_file_path = os.path.join(directory, csv_file)
-        
-        for nu in nu_values:
-            for gamma in gamma_values:
-                for kernel in kernel_values:
-                    print(f"Processing {csv_file} with SVDD parameters: nu={nu}, gamma={gamma}, kernel={kernel}")
-                    X_train, X_test, y_train, y_test = load_and_preprocess_data(csv_file_path)
-                    
-                    if X_train is not None and y_train is not None:
-                        svdd_model = train_svdd(X_train, y_train, nu, [gamma], [kernel])
+    metrics_results_svdd = []
+    metrics_results_ocknn = []
+
+    for csv_file in os.listdir(directory):
+        if csv_file.endswith('.csv'):
+            print(f"Processing file: {csv_file}")
+            csv_file_path = os.path.join(directory, csv_file)
+            for k in k_values:
+                for num_illegitimate_samples in num_illegitimate_samples_values:
+                    for noise_scale in noise_scales:
+                        X_train, X_test, y_train, y_test = load_and_preprocess_data(
+                            csv_file_path, k=k, num_illegitimate_samples=num_illegitimate_samples, noise_scale=noise_scale
+                        )
+                        if X_train is None or X_test is None:
+                            continue
                         
-                        if svdd_model:
-                            precision, recall, f1, far, frr, cm, eer = evaluate_model(svdd_model, X_test, y_test)
-                            
-                            if eer < best_svdd_metrics['eer']:
-                                best_svdd_metrics = {
-                                    'precision': precision,
-                                    'recall': recall,
-                                    'f1': f1,
-                                    'far': far,
-                                    'frr': frr,
-                                    'eer': eer
-                                }
-                                best_svdd_params = {
-                                    'nu': nu,
-                                    'gamma': gamma,
-                                    'kernel': kernel
-                                }
-                                
-    print(f"Best SVDD Parameters: {best_svdd_params}")
-    print(f"Best SVDD Metrics: {best_svdd_metrics}")
+                        for nu in nu_values:
+                            for gamma in gamma_values:
+                                for kernel in kernel_values:
+                                    model_name = f"svdd_{csv_file}_{k}_{num_illegitimate_samples}_{noise_scale}_{nu}_{gamma}_{kernel}"
+                                    svdd_model = train_svdd(X_train, y_train, nu, gamma_values, kernel_values)
+                                    if svdd_model:
+                                        precision, recall, f1, far, frr, cm, eer = evaluate_model(svdd_model, X_test, y_test)
+                                        metrics_results_svdd.append({
+                                            'file': csv_file,
+                                            'k': k,
+                                            'num_illegitimate_samples': num_illegitimate_samples,
+                                            'noise_scale': noise_scale,
+                                            'nu': nu,
+                                            'gamma': gamma,
+                                            'kernel': kernel,
+                                            'precision': precision,
+                                            'recall': recall,
+                                            'f1': f1,
+                                            'far': far,
+                                            'frr': frr,
+                                            'cm': cm,
+                                            'eer': eer
+                                        })
+                                        save_model(svdd_model, model_name)
+                                        print(f"Evaluated SVDD model: {model_name}")
+                                    else:
+                                        print(f"Failed to train SVDD model: {model_name}")
+
+                        ocknn_model = train_ocknn(X_train)
+                        if ocknn_model:
+                            precision, recall, f1, far, frr, cm, eer = evaluate_model(ocknn_model, X_test, y_test)
+                            metrics_results_ocknn.append({
+                                'file': csv_file,
+                                'k': k,
+                                'num_illegitimate_samples': num_illegitimate_samples,
+                                'noise_scale': noise_scale,
+                                'precision': precision,
+                                'recall': recall,
+                                'f1': f1,
+                                'far': far,
+                                'frr': frr,
+                                'cm': cm,
+                                'eer': eer
+                            })
+                            save_model(ocknn_model, f"ocknn_{csv_file}_{k}_{num_illegitimate_samples}_{noise_scale}")
+                            print(f"Evaluated OCKNN model: {csv_file}_{k}_{num_illegitimate_samples}_{noise_scale}")
+                        else:
+                            print(f"Failed to train OCKNN model: {csv_file}_{k}_{num_illegitimate_samples}_{noise_scale}")
+
+    # Save metrics results
+    svdd_metrics_df = pd.DataFrame(metrics_results_svdd)
+    ocknn_metrics_df = pd.DataFrame(metrics_results_ocknn)
+    svdd_metrics_df.to_csv(os.path.join(plots_base_directory, 'svdd_metrics_results.csv'), index=False)
+    ocknn_metrics_df.to_csv(os.path.join(plots_base_directory, 'ocknn_metrics_results.csv'), index=False)
+
+    # Plot distributions
+    plot_distributions(
+        {
+            'far': [result['far'] for result in metrics_results_svdd],
+            'frr': [result['frr'] for result in metrics_results_svdd],
+            'eer': [result['eer'] for result in metrics_results_svdd]
+        },
+        'SVDD'
+    )
     
-    # Save the best SVDD model
-    for csv_file in csv_files:
-        user_id = os.path.splitext(csv_file)[0]
-        user_data_path = os.path.join(directory, csv_file)
-        train_user_model(user_id, user_data_path, best_svdd_params)
+    plot_distributions(
+        {
+            'far': [result['far'] for result in metrics_results_ocknn],
+            'frr': [result['frr'] for result in metrics_results_ocknn],
+            'eer': [result['eer'] for result in metrics_results_ocknn]
+        },
+        'OCKNN'
+    )
 
 if __name__ == "__main__":
     main()
+
