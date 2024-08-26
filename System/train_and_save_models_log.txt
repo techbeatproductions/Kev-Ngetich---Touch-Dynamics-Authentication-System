@@ -1,0 +1,35 @@
+2024-08-26 18:52:45,382 - WARNING -  * Debugger is active!
+2024-08-26 18:52:45,402 - INFO -  * Debugger PIN: 534-941-215
+2024-08-26 18:53:04,452 - INFO -  * Detected change in 'c:\\Users\\ngeti\\Documents\\4.2\\Kev-Ngetich---Touch-Dynamics-Authentication-System\\System\\enrollment_app.py', reloading
+2024-08-26 18:53:20,197 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2024-08-26 18:53:20,199 - INFO - [33mPress CTRL+C to quit[0m
+2024-08-26 18:53:20,272 - INFO -  * Restarting with stat
+2024-08-26 18:53:27,969 - WARNING -  * Debugger is active!
+2024-08-26 18:53:27,979 - INFO -  * Debugger PIN: 534-941-215
+2024-08-26 18:53:56,521 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2024-08-26 18:53:56,521 - INFO - [33mPress CTRL+C to quit[0m
+2024-08-26 18:53:56,523 - INFO -  * Restarting with stat
+2024-08-26 18:54:04,870 - WARNING -  * Debugger is active!
+2024-08-26 18:54:04,956 - INFO -  * Debugger PIN: 534-941-215
+2024-08-26 18:54:05,026 - INFO - Touch data shape for user user1: (4, 6)
+2024-08-26 18:54:05,040 - INFO - Raw touch data saved to: C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles\user1_raw.csv
+2024-08-26 18:54:06,107 - INFO - Models trained and saved for user user1
+2024-08-26 18:54:06,108 - INFO - 127.0.0.1 - - [26/Aug/2024 18:54:06] "[35m[1mPOST /create_profile HTTP/1.1[0m" 201 -
+2024-08-26 18:55:54,994 - INFO -  * Detected change in 'c:\\Users\\ngeti\\Documents\\4.2\\Kev-Ngetich---Touch-Dynamics-Authentication-System\\System\\train_and_save_models.py', reloading
+2024-08-26 18:55:55,506 - INFO -  * Restarting with stat
+2024-08-26 18:56:04,486 - WARNING -  * Debugger is active!
+2024-08-26 18:56:04,562 - INFO -  * Debugger PIN: 534-941-215
+2024-08-26 18:56:04,711 - INFO - Touch data shape for user user1: (4, 6)
+2024-08-26 18:56:04,728 - INFO - Raw touch data saved to: C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles\user1_raw.csv
+2024-08-26 18:56:05,815 - INFO - Models trained and saved for user user1
+2024-08-26 18:56:05,816 - INFO - 127.0.0.1 - - [26/Aug/2024 18:56:05] "[35m[1mPOST /create_profile HTTP/1.1[0m" 201 -
+2024-08-26 18:59:16,807 - INFO -  * Detected change in 'c:\\Users\\ngeti\\Documents\\4.2\\Kev-Ngetich---Touch-Dynamics-Authentication-System\\System\\train_and_save_models.py', reloading
+2024-08-26 18:59:17,497 - INFO -  * Restarting with stat
+2024-08-26 18:59:26,064 - WARNING -  * Debugger is active!
+2024-08-26 18:59:26,069 - INFO -  * Debugger PIN: 534-941-215
+2024-08-26 18:59:26,088 - INFO - Touch data shape for user user1: (4, 6)
+2024-08-26 18:59:26,094 - INFO - Raw touch data saved to: C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles\user1_raw.csv
+2024-08-26 18:59:26,629 - INFO - Models trained and saved for user user1
+2024-08-26 18:59:26,630 - INFO - 127.0.0.1 - - [26/Aug/2024 18:59:26] "[35m[1mPOST /create_profile HTTP/1.1[0m" 201 -
