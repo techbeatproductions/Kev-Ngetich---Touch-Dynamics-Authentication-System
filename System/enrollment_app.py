@@ -21,6 +21,7 @@ logging.basicConfig(
 user_profiles_directory = r'C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles'
 models_base_directory = r'C:\Users\ngeti\Documents\4.2\Final Year Project System\models'
 plots_base_directory = r'C:\Users\ngeti\Documents\4.2\Final Year Project System\plots'
+other_users_directory = r'C:\Users\ngeti\Documents\4.2\Final Year Project System\touch_dynamics_dataset'
 
 
 # Ensure directories exist
@@ -71,7 +72,7 @@ def create_profile():
         }
         
         # Enroll the user by training their models
-        svdd_model_path, ocknn_model_path = enroll_user(user_id, user_data_path, best_svdd_params)
+        svdd_model_path, ocknn_model_path = enroll_user(user_id, user_data_path, best_svdd_params, other_users_directory)
         
         if svdd_model_path and ocknn_model_path:
             logging.info(f"Models trained and saved for user {user_id}")
@@ -154,7 +155,7 @@ def update_profile():
         }
         
         # Retrain the user model with updated data
-        svdd_model_path, ocknn_model_path = enroll_user(user_id, user_data_path, best_svdd_params)
+        svdd_model_path, ocknn_model_path = enroll_user(user_id, user_data_path, best_svdd_params, other_users_directory)
         
         if svdd_model_path and ocknn_model_path:
             logging.info(f"Models retrained and saved for user {user_id}")

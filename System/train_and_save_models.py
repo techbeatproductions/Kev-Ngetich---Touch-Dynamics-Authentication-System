@@ -343,68 +343,7 @@ def train_ocknn(X_train):
     ocknn.fit(X_train)
     return ocknn
 
-def enroll_user(user_id, user_data_path, best_svdd_params, other_users_directory=None):
-    """
-    Enroll a user by training and saving their SVDD and OCKNN models.
-    """
-    try:
-        # Load and preprocess data for the new user
-        X_train, X_test, y_train, y_test = load_and_preprocess_data(
-            user_data_path, k=10, num_illegitimate_samples=0, noise_scale=0.05
-        )
 
-        if X_train is None or X_test is None:
-            raise ValueError("Failed to preprocess data")
-
-        # Generate illegitimate samples based on other users' data if provided
-        if other_users_directory:
-            # Collect all other users' data
-            all_other_users_features = []
-            for csv_file in os.listdir(other_users_directory):
-                if csv_file.endswith('.csv'):
-                    csv_file_path = os.path.join(other_users_directory, csv_file)
-                    other_features_df = pd.read_csv(csv_file_path, header=None)
-                    other_features_df = other_features_df[other_features_df.iloc[:, 1] != 'E']
-                    other_features_df.iloc[:, 2] = pd.to_numeric(other_features_df.iloc[:, 2], errors='coerce')
-                    other_features_df.iloc[:, 4] = pd.to_numeric(other_features_df.iloc[:, 4], errors='coerce')
-                    other_features_df.iloc[:, 5] = pd.to_numeric(other_features_df.iloc[:, 5], errors='coerce')
-                    other_features_df = other_features_df.dropna()
-                    other_features_df = extract_features(other_features_df)
-                    all_other_users_features.append(other_features_df.values)
-            
-            if all_other_users_features:
-                all_other_users_features = np.vstack(all_other_users_features)
-                num_illegitimate_samples = min(40, all_other_users_features.shape[0])
-                illegitimate_features = generate_illegitimate_samples(
-                    all_other_users_features, num_samples=num_illegitimate_samples, noise_scale=0.05
-                )
-                illegitimate_labels = np.ones(num_illegitimate_samples) * -1
-                X_train = np.vstack((X_train, illegitimate_features))
-                y_train = np.hstack((y_train, illegitimate_labels))
-
-        # Train SVDD model using best parameters
-        svdd_model = train_svdd(X_train, y_train, 
-                                nu=best_svdd_params['nu'], 
-                                gamma_values=best_svdd_params['gamma_values'], 
-                                kernel_values=best_svdd_params['kernel_values'])
-        
-        # Train OCKNN model
-        ocknn_model = train_ocknn(X_train)
-
-        # Save the trained models
-        if svdd_model:
-            svdd_model_path = os.path.join(models_base_directory, f'{user_id}_svdd_model.pkl')
-            save_model(svdd_model, f'{user_id}_svdd_model')
-
-        if ocknn_model:
-            ocknn_model_path = os.path.join(models_base_directory, f'{user_id}_ocknn_model.pkl')
-            save_model(ocknn_model, f'{user_id}_ocknn_model')
-
-        return svdd_model_path, ocknn_model_path
-
-    except Exception as e:
-        logging.error(f"Error during user enrollment for {user_id}: {e}")
-        return None, None
 
 def evaluate_model(model, X_test, y_test):
     with warnings.catch_warnings():
@@ -483,36 +422,23 @@ def plot_confusion_matrix(cm, model_name):
     plt.close()
 
 def main():
-    # Example usage for enrollment
-    user_id = 'user_123'
-    user_data_path = r'path_to_user_data.csv'
-    best_svdd_params = {
-        'nu': 0.5,
-        'gamma_values': [0.1, 1, 10],
-        'kernel_values': ['linear', 'rbf']
-    }
-    
-    # Enroll the user
-    enroll_user(user_id, user_data_path, best_svdd_params)
-
-    # Example usage for authentication
-    auth_results = authenticate_user(user_id, user_data_path)
-    if auth_results:
-        print("SVDD Authentication Results:", auth_results['svdd'])
-        print("OCKNN Authentication Results:", auth_results['ocknn'])
-    
     # Hyperparameter tuning example
     best_svdd_model = None
     best_svdd_metrics = None
     best_svdd_params = {}
     
-    best_ocknn_model = None
-    best_ocknn_metrics = None
-    
+    k_values = [5, 10, 15]  # Example values, adjust as needed
+    num_illegitimate_samples_values = [20, 40, 60]  # Example values, adjust as needed
+    noise_scales = [0.01, 0.05, 0.1]  # Example values, adjust as needed
+    nu_values = [0.1, 0.5, 0.9]  # Example values, adjust as needed
+    gamma_values = [0.1, 1, 10]  # Example values, adjust as needed
+    kernel_values = ['linear', 'rbf']  # Example values, adjust as needed
+
     for csv_file in os.listdir(directory):
         if csv_file.endswith('.csv'):
             print(f"Processing file: {csv_file}")
             csv_file_path = os.path.join(directory, csv_file)
+            
             for k in k_values:
                 for num_illegitimate_samples in num_illegitimate_samples_values:
                     for noise_scale in noise_scales:
@@ -525,7 +451,6 @@ def main():
                         for nu in nu_values:
                             for gamma in gamma_values:
                                 for kernel in kernel_values:
-                                    model_name = f"svdd_{csv_file}_{k}_{num_illegitimate_samples}_{noise_scale}_{nu}_{gamma}_{kernel}"
                                     svdd_model = train_svdd(X_train, y_train, nu, gamma, kernel)
                                     if svdd_model:
                                         precision, recall, f1, far, frr, cm, eer = evaluate_model(svdd_model, X_test, y_test)
@@ -559,7 +484,6 @@ def main():
         print(f"Best SVDD Model found with F1 score: {best_svdd_metrics['f1']}")
         # Save or use the best SVDD model as needed
         save_model(best_svdd_model, 'best_svdd_model')
-
 
 if __name__ == "__main__":
     main()
