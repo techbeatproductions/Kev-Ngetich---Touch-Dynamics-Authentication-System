@@ -28,6 +28,8 @@ os.makedirs(user_profiles_directory, exist_ok=True)
 os.makedirs(models_base_directory, exist_ok=True)
 os.makedirs(plots_base_directory, exist_ok=True)
 
+
+
 def save_user_profile(user_id, user_profile):
     """
     Save the user profile to a pickle file.
