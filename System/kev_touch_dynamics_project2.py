@@ -234,9 +234,10 @@ def enroll_user():
         # Load and preprocess data
         request_data = request.get_json()  # Get the JSON data from the request
         tap_data = request_data.get('tap_data')
+        user_id = request_data.get('user_id')
         
-        if tap_data is None:
-            return jsonify({'error': 'No user data provided'}), 400
+        if tap_data is None or user_id is None:
+            return jsonify({'error': 'No user data or user ID provided'}), 400
 
         # Convert the list of lists into a DataFrame
         user_df = pd.DataFrame(tap_data, columns=['Column1', 'Column2', 'Column3', 'Column4', 'Column5', 'Column6'])
@@ -268,8 +269,7 @@ def enroll_user():
         ocknn_metrics = evaluate_model(ocknn_model, X_test, y_test, timestamp)
 
         # Save models
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        user_model_directory = os.path.join(r'C:\Users\ngeti\Documents\4.2\Final Year Project System\models', f'user_{timestamp}')
+        user_model_directory = os.path.join(r'C:\Users\ngeti\Documents\4.2\Final Year Project System\models', f'user_{user_id}')
         os.makedirs(user_model_directory, exist_ok=True)
         
         with open(os.path.join(user_model_directory, 'svdd_model.pkl'), 'wb') as f:
@@ -305,23 +305,27 @@ def enroll_user():
 @app.route('/authenticate', methods=['POST'])
 def authenticate_user():
     try:
-        # Load the user's tap data from the request
+        # Load the user's tap data and user ID from the request
         request_data = request.get_json()
         tap_data = request_data.get('tap_data')
+        user_id = request_data.get('user_id')
 
-        if tap_data is None:
-            return jsonify({'error': 'No user data provided'}), 400
+        if tap_data is None or user_id is None:
+            return jsonify({'error': 'No user data or user ID provided'}), 400
 
         # Convert the list of lists into a DataFrame
         user_df = pd.DataFrame(tap_data, columns=['Column1', 'Column2', 'Column3', 'Column4', 'Column5', 'Column6'])
 
-        # Load the user's model from the file
-        user_model_directory = request_data.get('user_model_directory')
-        if user_model_directory is None:
-            return jsonify({'error': 'No user model directory provided'}), 400
+        # Load the user's model from the file using the user ID
+        user_model_directory = os.path.join(r'C:\Users\ngeti\Documents\4.2\Final Year Project System\models', f'user_{user_id}')
+        if not os.path.exists(user_model_directory):
+            return jsonify({'error': 'User ID not found'}), 404
 
         svdd_model_path = os.path.join(user_model_directory, 'svdd_model.pkl')
         ocknn_model_path = os.path.join(user_model_directory, 'ocknn_model.pkl')
+
+        if not os.path.exists(svdd_model_path) or not os.path.exists(ocknn_model_path):
+            return jsonify({'error': 'User model not found'}), 404
 
         with open(svdd_model_path, 'rb') as f:
             svdd_model = pickle.load(f)
@@ -345,5 +349,6 @@ def authenticate_user():
     except Exception as e:
         print(f"Error during authentication: {e}")
         return jsonify({'error': str(e)}), 500
+    
 if __name__ == '__main__':
     app.run(debug=True)
