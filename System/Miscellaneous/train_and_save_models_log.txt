@@ -1,0 +1,32 @@
+2024-08-26 19:16:12,296 - WARNING -  * Debugger is active!
+2024-08-26 19:16:12,307 - INFO -  * Debugger PIN: 534-941-215
+2024-08-26 19:16:36,394 - INFO - Touch data shape for user user1: (4, 6)
+2024-08-26 19:16:36,405 - INFO - Raw touch data saved to: C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles\user1_raw.csv
+2024-08-26 19:16:37,394 - ERROR - Error in create_profile: not enough values to unpack (expected 3, got 2)
+2024-08-26 19:16:37,396 - INFO - 127.0.0.1 - - [26/Aug/2024 19:16:37] "[35m[1mPOST /create_profile HTTP/1.1[0m" 500 -
+2024-08-26 19:16:59,956 - INFO - Touch data shape for user user1: (4, 6)
+2024-08-26 19:16:59,958 - INFO - Raw touch data saved to: C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles\user1_raw.csv
+2024-08-26 19:17:00,236 - ERROR - Error in create_profile: not enough values to unpack (expected 3, got 2)
+2024-08-26 19:17:00,238 - INFO - 127.0.0.1 - - [26/Aug/2024 19:17:00] "[35m[1mPOST /create_profile HTTP/1.1[0m" 500 -
+2024-08-26 19:17:27,024 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2024-08-26 19:17:27,025 - INFO - [33mPress CTRL+C to quit[0m
+2024-08-26 19:17:27,028 - INFO -  * Restarting with stat
+2024-08-26 19:17:34,471 - WARNING -  * Debugger is active!
+2024-08-26 19:17:34,480 - INFO -  * Debugger PIN: 534-941-215
+2024-08-26 19:17:35,873 - INFO - Touch data shape for user user1: (4, 6)
+2024-08-26 19:17:35,885 - INFO - Raw touch data saved to: C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles\user1_raw.csv
+2024-08-26 19:17:36,522 - ERROR - Error in create_profile: not enough values to unpack (expected 3, got 2)
+2024-08-26 19:17:36,523 - INFO - 127.0.0.1 - - [26/Aug/2024 19:17:36] "[35m[1mPOST /create_profile HTTP/1.1[0m" 500 -
+2024-08-26 19:21:32,559 - INFO -  * Detected change in 'c:\\Users\\ngeti\\Documents\\4.2\\Final Year Project System\\enrollment_app.py', reloading
+2024-08-26 19:21:33,044 - INFO -  * Restarting with stat
+2024-08-26 19:21:50,634 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2024-08-26 19:21:50,634 - INFO - [33mPress CTRL+C to quit[0m
+2024-08-26 19:21:50,638 - INFO -  * Restarting with stat
+2024-08-26 19:21:58,451 - WARNING -  * Debugger is active!
+2024-08-26 19:21:58,467 - INFO -  * Debugger PIN: 534-941-215
+2024-08-26 19:22:10,257 - INFO - Touch data shape for user user1: (4, 6)
+2024-08-26 19:22:10,266 - INFO - Raw touch data saved to: C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles\user1_raw.csv
+2024-08-26 19:22:11,124 - INFO - Models trained and saved for user user1
+2024-08-26 19:22:11,126 - INFO - 127.0.0.1 - - [26/Aug/2024 19:22:11] "[35m[1mPOST /create_profile HTTP/1.1[0m" 201 -

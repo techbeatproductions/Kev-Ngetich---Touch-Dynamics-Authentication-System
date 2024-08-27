@@ -11,25 +11,18 @@ from train_and_save_models import train_svdd, enroll_user  # Import your functio
 app = Flask(__name__)
 
 # Configure logging
-logging.basicConfig(
-    filename='enroll_user_log.txt',  # Name of the log file
-    level=logging.DEBUG,             # Log level: DEBUG captures all levels of logs
-    format='%(asctime)s - %(levelname)s - %(message)s'  # Log format
-)
+logging.basicConfig(level=logging.INFO)
 
 # Directories for saving models and user profiles
 user_profiles_directory = r'C:\Users\ngeti\Documents\4.2\Final Year Project System\user_profiles'
 models_base_directory = r'C:\Users\ngeti\Documents\4.2\Final Year Project System\models'
 plots_base_directory = r'C:\Users\ngeti\Documents\4.2\Final Year Project System\plots'
-other_users_directory = r'C:\Users\ngeti\Documents\4.2\Final Year Project System\touch_dynamics_dataset'
 
 
 # Ensure directories exist
 os.makedirs(user_profiles_directory, exist_ok=True)
 os.makedirs(models_base_directory, exist_ok=True)
 os.makedirs(plots_base_directory, exist_ok=True)
-
-
 
 def save_user_profile(user_id, user_profile):
     """
@@ -72,7 +65,7 @@ def create_profile():
         }
         
         # Enroll the user by training their models
-        svdd_model_path, ocknn_model_path = enroll_user(user_id, user_data_path, best_svdd_params, other_users_directory)
+        svdd_model_path, ocknn_model_path = enroll_user(user_id, user_data_path, best_svdd_params)
         
         if svdd_model_path and ocknn_model_path:
             logging.info(f"Models trained and saved for user {user_id}")
@@ -155,7 +148,7 @@ def update_profile():
         }
         
         # Retrain the user model with updated data
-        svdd_model_path, ocknn_model_path = enroll_user(user_id, user_data_path, best_svdd_params, other_users_directory)
+        svdd_model_path, ocknn_model_path = enroll_user(user_id, user_data_path, best_svdd_params)
         
         if svdd_model_path and ocknn_model_path:
             logging.info(f"Models retrained and saved for user {user_id}")
