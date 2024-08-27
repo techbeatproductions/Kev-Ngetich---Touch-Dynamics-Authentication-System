@@ -302,6 +302,63 @@ def enroll_user():
         print(f"Error during enrollment: {e}")
         return jsonify({'error': str(e)}), 500
     
+
+def process_all_csv_files():
+    csv_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
+    
+    for csv_file in csv_files:
+        csv_file_path = os.path.join(directory, csv_file)
+        print(f"Processing file: {csv_file_path}")
+
+        try:
+            X_train, X_test, y_train, y_test = load_and_preprocess_data(csv_file_path, k=10, num_illegitimate_samples=40, verbose=True)
+
+            if X_train is None or X_test is None or y_train is None or y_test is None:
+                print(f"Skipping file due to preprocessing issues: {csv_file_path}")
+                continue
+
+            print("Training SVDD model...")
+            best_svdd = train_svdd(X_train, y_train)
+            if best_svdd is None:
+                print(f"SVDD model training failed for file: {csv_file_path}")
+                continue
+
+            print("Training OCKNN model...")
+            ocknn_model = train_ocknn(X_train)
+            if ocknn_model is None:
+                print(f"OCKNN model training failed for file: {csv_file_path}")
+                continue
+
+            print("Evaluating SVDD model...")
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            svdd_metrics = evaluate_model(best_svdd, X_test, y_test, timestamp)
+            print("Evaluating OCKNN model...")
+            ocknn_metrics = evaluate_model(ocknn_model, X_test, y_test, timestamp)
+
+            # Save models
+            user_model_directory = os.path.join(r'C:\Users\ngeti\Documents\4.2\Final Year Project System\models', f'file_{os.path.splitext(csv_file)[0]}')
+            os.makedirs(user_model_directory, exist_ok=True)
+
+            with open(os.path.join(user_model_directory, 'svdd_model.pkl'), 'wb') as f:
+                pickle.dump(best_svdd, f)
+
+            with open(os.path.join(user_model_directory, 'ocknn_model.pkl'), 'wb') as f:
+                pickle.dump(ocknn_model, f)
+
+            # Plot and save metrics
+            plot_distributions({
+                'FAR': svdd_metrics['FAR'],
+                'FRR': svdd_metrics['FRR'],
+                'EER': svdd_metrics['EER'],
+            }, {
+                'FAR': ocknn_metrics['FAR'],
+                'FRR': ocknn_metrics['FRR'],
+                'EER': ocknn_metrics['EER'],
+            }, timestamp)
+
+        except Exception as e:
+            print(f"Error processing file {csv_file_path}: {e}")
+
 @app.route('/authenticate', methods=['POST'])
 def authenticate_user():
     try:
@@ -349,6 +406,17 @@ def authenticate_user():
     except Exception as e:
         print(f"Error during authentication: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/process_all_csv', methods=['GET'])
+def process_all_csv():
+    try:
+        process_all_csv_files()
+        return jsonify({'message': 'Processing all CSV files completed successfully'}), 200
+    except Exception as e:
+        print(f"Error during processing: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
     
 if __name__ == '__main__':
     app.run(debug=True)
