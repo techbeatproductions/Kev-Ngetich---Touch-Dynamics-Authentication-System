@@ -58,7 +58,7 @@ def generate_illegitimate_samples(X, num_samples):
     indices = np.random.choice(X.shape[0], num_samples, replace=False)
     return illegitimate_samples[indices]
 
-def load_and_preprocess_data(csv_file_path, k=10, num_illegitimate_samples=40, verbose=False):
+def load_and_preprocess_data(csv_file_path, k=10, num_illegitimate_samples=20, verbose=False):
     try:
         data = pd.read_csv(csv_file_path, header=None)
         data = data[data.iloc[:, 1] != 'E']
@@ -128,7 +128,7 @@ def load_and_preprocess_data(csv_file_path, k=10, num_illegitimate_samples=40, v
         print(f"ValueError: {e}")
         return None, None, None, None
 
-def train_svdd(X_train, y_train, gamma_values=[1e-3, 1e-2, 0.1, 1, 10, 100], kernel_values=['rbf', 'linear', 'poly', 'sigmoid'], nu_values=[1e-4, 1e-3, 1e-2, 0.1, 0.5, 0.9]):
+def train_svdd(X_train, y_train, gamma_values=[1e-5, 1e-4, 1e-3, 1e-2, 0.1, 1, 10, 100, 1000], kernel_values=['rbf', 'linear', 'poly', 'sigmoid'], nu_values=[1e-5, 1e-4, 1e-3, 1e-2, 0.05, 0.1, 0.2, 0.5, 0.7, 0.9, 0.95]):
     if X_train is None or y_train is None:
         return None
     
@@ -156,22 +156,26 @@ def evaluate_model(model, X_test, y_test, timestamp):
 
         y_test_binary = np.where(y_test == 1, 1, 0)
 
+        # Calculate precision, recall, F1 score
         precision = precision_score(y_test_binary, predictions_binary, zero_division=1)
         recall = recall_score(y_test_binary, predictions_binary, zero_division=1)
         f1 = f1_score(y_test_binary, predictions_binary, zero_division=1)
 
+        # Confusion matrix
         cm = confusion_matrix(y_test_binary, predictions_binary)
+        tn, fp, fn, tp = cm.ravel() if cm.shape == (2, 2) else (0, 0, 0, 0)
 
-        if cm.shape == (2, 2):
-            tn, fp, fn, tp = cm.ravel()
-        else:
-            tn, fp, fn, tp = 0, 0, 0, 0
+        # Calculate Accuracy
+        accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) != 0 else 0
+        accuracy_percentage = accuracy * 100
 
+        # FAR and FRR
         far = fp / (fp + tn) if (fp + tn) != 0 else 0
         frr = fn / (fn + tp) if (fn + tp) != 0 else 0
 
+        # ROC Curve and EER
         try:
-            fpr, tpr, thresholds = roc_curve(y_test_binary, predictions_binary, pos_label=1)
+            fpr, tpr, _ = roc_curve(y_test_binary, predictions_binary, pos_label=1)
             eer = np.interp(0.5, np.concatenate([fpr, [1]]), np.concatenate([tpr, [1]]))
         except ValueError:
             eer = np.nan
@@ -180,17 +184,17 @@ def evaluate_model(model, X_test, y_test, timestamp):
             'Precision': precision,
             'Recall': recall,
             'F1 Score': f1,
+            'Accuracy': accuracy_percentage,  # Include accuracy as a percentage
             'FAR': far,
             'FRR': frr,
             'EER': eer
         }
 
         # Plot the confusion matrix
-        
         plot_directory = os.path.join(plots_base_directory, timestamp)
         os.makedirs(plot_directory, exist_ok=True)
         plt.figure(figsize=(10, 8))
-        sns.heatmap(confusion_matrix(y_test_binary, predictions_binary), annot=True, cmap='Blues')
+        sns.heatmap(cm, annot=True, cmap='Blues', fmt='d', xticklabels=['Negative', 'Positive'], yticklabels=['Negative', 'Positive'])
         plt.xlabel('Predicted labels')
         plt.ylabel('True labels')
         plt.title('Confusion Matrix')
@@ -198,6 +202,8 @@ def evaluate_model(model, X_test, y_test, timestamp):
         plt.close()
 
         return metrics
+
+
 
 def plot_distributions(svdd_metrics, ocknn_metrics, timestamp):
     # Create a timestamped folder in the plots directory
@@ -231,7 +237,7 @@ def plot_distributions(svdd_metrics, ocknn_metrics, timestamp):
 @app.route('/enroll', methods=['POST'])
 def enroll_user():
     try:
-        # Load and preprocess data
+        # Load and preprocess data from the POST request
         request_data = request.get_json()  # Get the JSON data from the request
         tap_data = request_data.get('tap_data')
         user_id = request_data.get('user_id')
@@ -241,17 +247,60 @@ def enroll_user():
 
         # Convert the list of lists into a DataFrame
         user_df = pd.DataFrame(tap_data, columns=['Column1', 'Column2', 'Column3', 'Column4', 'Column5', 'Column6'])
+        user_features_df = extract_features(user_df)
         
-        # Save the DataFrame to a CSV file
-        user_csv_path = 'user_data.csv'
-        user_df.to_csv(user_csv_path, index=False, header=False)
-
-        # Process user data
-        X_train, X_test, y_train, y_test = load_and_preprocess_data(user_csv_path, k=10, num_illegitimate_samples=40, verbose=True)
-
-        if X_train is None or X_test is None or y_train is None or y_test is None:
-            return jsonify({'error': 'Data preprocessing failed'}), 400
+        if user_features_df.empty:
+            return jsonify({'error': 'No valid data in user request'}), 400
         
+        legitimate_user_labels = np.ones(len(user_features_df))
+        
+        # Load and preprocess existing dataset
+        existing_features_list = []
+        existing_labels_list = []
+
+        csv_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
+        for csv_file in csv_files:
+            csv_file_path = os.path.join(directory, csv_file)
+            print(f"Processing file: {csv_file_path}")
+            
+            try:
+                X_train, _, y_train, _ = load_and_preprocess_data(csv_file_path, k=10, num_illegitimate_samples=40, verbose=False)
+                
+                if X_train is not None and y_train is not None:
+                    legitimate_existing_labels = np.ones(len(y_train))
+                    
+                    existing_features_list.append(X_train)
+                    existing_labels_list.append(legitimate_existing_labels)
+                    
+            except Exception as e:
+                print(f"Error processing file {csv_file_path}: {e}")
+
+        if not existing_features_list:
+            return jsonify({'error': 'No valid data in existing dataset'}), 400
+        
+        # Combine user features with existing features
+        existing_features = np.vstack(existing_features_list)
+        existing_labels = np.hstack(existing_labels_list)
+        
+        illegitimate_features = generate_illegitimate_samples(existing_features, num_samples=len(existing_features))
+        illegitimate_labels = np.ones(len(illegitimate_features)) * -1
+        
+        all_features = np.vstack((existing_features, illegitimate_features, user_features_df.values))
+        all_labels = np.hstack((existing_labels, illegitimate_labels, legitimate_user_labels))
+
+        # Preprocess combined data
+        scaler = MinMaxScaler()
+        X = scaler.fit_transform(all_features)
+        y_binary = np.where(all_labels == 1, 1, -1)
+        
+        selector = SelectKBest(score_func=mutual_info_classif, k=min(10, X.shape[1]))
+        X = selector.fit_transform(X, y_binary)
+        
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y_binary, test_size=0.2, stratify=y_binary, random_state=42
+        )
+        
+        # Train models
         print("Training SVDD model...")
         best_svdd = train_svdd(X_train, y_train)
         if best_svdd is None:
@@ -262,6 +311,7 @@ def enroll_user():
         if ocknn_model is None:
             return jsonify({'error': 'OCKNN model training failed'}), 500
         
+        # Evaluate models
         print("Evaluating SVDD model...")
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         svdd_metrics = evaluate_model(best_svdd, X_test, y_test, timestamp)
@@ -278,7 +328,6 @@ def enroll_user():
         with open(os.path.join(user_model_directory, 'ocknn_model.pkl'), 'wb') as f:
             pickle.dump(ocknn_model, f)
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         # Plot and save metrics
         plot_distributions({
             'FAR': svdd_metrics['FAR'],
@@ -301,9 +350,9 @@ def enroll_user():
     except Exception as e:
         print(f"Error during enrollment: {e}")
         return jsonify({'error': str(e)}), 500
-    
 
-def process_all_csv_files():
+
+
     csv_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
     
     for csv_file in csv_files:
@@ -361,6 +410,7 @@ def process_all_csv_files():
 
 @app.route('/authenticate', methods=['POST'])
 def authenticate_user():
+
     try:
         # Load the user's tap data and user ID from the request
         request_data = request.get_json()
@@ -407,8 +457,7 @@ def authenticate_user():
         print(f"Error during authentication: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/process_all_csv', methods=['GET'])
-def process_all_csv():
+
     try:
         process_all_csv_files()
         return jsonify({'message': 'Processing all CSV files completed successfully'}), 200
@@ -416,6 +465,103 @@ def process_all_csv():
         print(f"Error during processing: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/process_all_csv', methods=['GET'])
+def process_all_csv():
+    try:
+        csv_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
+        svdd_metrics_list = []
+        ocknn_metrics_list = []
+
+        for csv_file in csv_files:
+            csv_file_path = os.path.join(directory, csv_file)
+            print(f"Processing file: {csv_file_path}")
+
+            try:
+                X_train, X_test, y_train, y_test = load_and_preprocess_data(csv_file_path, k=10, num_illegitimate_samples=40, verbose=True)
+
+                if X_train is None or X_test is None or y_train is None or y_test is None:
+                    print(f"Skipping file due to preprocessing issues: {csv_file_path}")
+                    continue
+
+                print("Training SVDD model...")
+                best_svdd = train_svdd(X_train, y_train)
+                if best_svdd is None:
+                    print(f"SVDD model training failed for file: {csv_file_path}")
+                    continue
+
+                print("Training OCKNN model...")
+                ocknn_model = train_ocknn(X_train)
+                if ocknn_model is None:
+                    print(f"OCKNN model training failed for file: {csv_file_path}")
+                    continue
+
+                print("Evaluating SVDD model...")
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                svdd_metrics = evaluate_model(best_svdd, X_test, y_test, timestamp)
+                print("Evaluating OCKNN model...")
+                ocknn_metrics = evaluate_model(ocknn_model, X_test, y_test, timestamp)
+
+                svdd_metrics_list.append(svdd_metrics)
+                ocknn_metrics_list.append(ocknn_metrics)
+
+                # Save models
+                user_model_directory = os.path.join(r'C:\Users\ngeti\Documents\4.2\Final Year Project System\models', f'file_{os.path.splitext(csv_file)[0]}')
+                os.makedirs(user_model_directory, exist_ok=True)
+
+                with open(os.path.join(user_model_directory, 'svdd_model.pkl'), 'wb') as f:
+                    pickle.dump(best_svdd, f)
+
+                with open(os.path.join(user_model_directory, 'ocknn_model.pkl'), 'wb') as f:
+                    pickle.dump(ocknn_model, f)
+
+                # Plot and save metrics
+                plot_distributions({
+                    'FAR': svdd_metrics['FAR'],
+                    'FRR': svdd_metrics['FRR'],
+                    'EER': svdd_metrics['EER'],
+                }, {
+                    'FAR': ocknn_metrics['FAR'],
+                    'FRR': ocknn_metrics['FRR'],
+                    'EER': ocknn_metrics['EER'],
+                }, timestamp)
+
+            except Exception as e:
+                print(f"Error processing file {csv_file_path}: {e}")
+
+        # Calculate average metrics
+        avg_svdd_metrics = {
+            'Precision': np.mean([metrics['Precision'] for metrics in svdd_metrics_list]),
+            'Recall': np.mean([metrics['Recall'] for metrics in svdd_metrics_list]),
+            'F1 Score': np.mean([metrics['F1 Score'] for metrics in svdd_metrics_list]),
+            'FAR': np.mean([metrics['FAR'] for metrics in svdd_metrics_list]),
+            'FRR': np.mean([metrics['FRR'] for metrics in svdd_metrics_list]),
+            'EER': np.mean([metrics['EER'] for metrics in svdd_metrics_list]),
+        }
+
+        avg_ocknn_metrics = {
+            'Precision': np.mean([metrics['Precision'] for metrics in ocknn_metrics_list]),
+            'Recall': np.mean([metrics['Recall'] for metrics in ocknn_metrics_list]),
+            'F1 Score': np.mean([metrics['F1 Score'] for metrics in ocknn_metrics_list]),
+            'FAR': np.mean([metrics['FAR'] for metrics in ocknn_metrics_list]),
+            'FRR': np.mean([metrics['FRR'] for metrics in ocknn_metrics_list]),
+            'EER': np.mean([metrics['EER'] for metrics in ocknn_metrics_list]),
+        }
+
+        # Save average metrics plots
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        plot_distributions(avg_svdd_metrics, avg_ocknn_metrics, timestamp)
+
+        return jsonify({
+            'message': 'Processing all CSV files completed successfully',
+            'average_svdd_metrics': avg_svdd_metrics,
+            'average_ocknn_metrics': avg_ocknn_metrics,
+            'timestamp': timestamp
+        }), 200
+    
+    except Exception as e:
+        print(f"Error during processing: {e}")
+        return jsonify({'error': str(e)}), 500
 
     
 if __name__ == '__main__':
