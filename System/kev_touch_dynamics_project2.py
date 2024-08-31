@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from sklearn.metrics import precision_recall_curve
 import numpy as np
 import pandas as pd
 import os
@@ -193,6 +194,8 @@ def evaluate_model(model, X_test, y_test, timestamp):
         # Plot the confusion matrix
         plot_directory = os.path.join(plots_base_directory, timestamp)
         os.makedirs(plot_directory, exist_ok=True)
+
+        # Confusion Matrix
         plt.figure(figsize=(10, 8))
         sns.heatmap(cm, annot=True, cmap='Blues', fmt='d', xticklabels=['Negative', 'Positive'], yticklabels=['Negative', 'Positive'])
         plt.xlabel('Predicted labels')
@@ -201,7 +204,27 @@ def evaluate_model(model, X_test, y_test, timestamp):
         plt.savefig(os.path.join(plot_directory, 'confusion_matrix.png'))
         plt.close()
 
+        # Precision-Recall Curve
+        plt.figure(figsize=(10, 5))
+        precision_vals, recall_vals, _ = precision_recall_curve(y_test_binary, predictions_binary, pos_label=1)
+        plt.plot(recall_vals, precision_vals, marker='.')
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.title('Precision-Recall Curve')
+        plt.savefig(os.path.join(plot_directory, 'precision_recall_curve.png'))
+        plt.close()
+
+        # ROC Curve
+        plt.figure(figsize=(10, 5))
+        plt.plot(fpr, tpr, marker='.')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC Curve')
+        plt.savefig(os.path.join(plot_directory, 'roc_curve.png'))
+        plt.close()
+
         return metrics
+
 
 
 
